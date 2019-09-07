@@ -10,6 +10,7 @@ processes-own[
   time
   state
   working
+  id ;??????????? magari ci metto il loro whonumbher
 ]
 cpus-own
 [
@@ -29,53 +30,59 @@ cores-own
 
 queues-own
 [
-  number-of-slots 
-  max-number-of-slots 
+  number-of-slots
+  max-number-of-slots
   queue-taken
 ]
 
 globals[
   the-cpu
+  the-queue
   unused-core
   used-core
-  max-number-of-cores 
-  number-of-cores 
+  max-number-of-cores
+  number-of-cores
   max-number-of-processes
   number-of-processes
   last_created
   current-process
+  current-slot
   mylist
   whonumber
 ]
 
+
+
+
+
 to setup
   clear-all
-  
+
   ask patches [set pcolor white]
   set mylist []
 
-  
+
   create-cpus 1
   set the-cpu one-of cpus
   set max-number-of-cores 4
   set number-of-cores 0
   set  max-number-of-processes 10
   set number-of-processes 0
-  set current-process 0
-  
+  set current-process 4
+
   ask the-cpu
   [
-    
-    set shape  "square 2" 
-    set xcor 10  
-    set ycor -10 
+
+    set shape  "square 2"
+    set xcor 10
+    set ycor -10
     set size 15
-    set color 4 
-  ] 
-  
+    set color 4
+  ]
+
    create-my-labels 1
   [
-    set xcor ([xcor] of the-cpu) 
+    set xcor ([xcor] of the-cpu)
     set ycor ([ycor] of the-cpu) + 5
     set label "CPU"
     set label-color white
@@ -83,8 +90,21 @@ to setup
   ]
 
   add-core
-  reset-ticks
   
+  create-queues 1
+  set the-queue one-of queues
+  ask the-queue[
+   set max-number-of-slots  10
+   set number-of-slots  0
+   set shape  "queue"
+   set size  33
+   set xcor 0
+    set ycor 9
+    set color  grey
+    set heading 180
+  ]
+  reset-ticks
+
 
 end
 
@@ -101,39 +121,89 @@ to add-core
       set core-taken false
     ]
   ]
-       
+
 end
 
 
 
 to go
 
-    if ticks > 0 and ticks mod 9000 = 0 and number-of-processes < max-number-of-processes
-  [ 
-    
-    create-processes 1[
-      set color green
-      set shape "square"
-      set size 2
-      set xcor 0
-      set ycor 0
-    ]
-    set whonumber  [who] of  process current-process
-    set mylist lput one-of processes with[who = whonumber] mylist
-      
-    set number-of-processes  number-of-processes + 1
-    set current-process  current-process + 1 ;verificare se quando muore un processo l'assegnazione sia sempre sequenziale oppure debba fare -1 in caso di die
-  ]
-  ;move to queue
-         
-    if any? cores with [core-taken = false] and number-of-processes > 0 [
-   ; ask cores with [xcor =  ([xcor] of one-of other processes)] [set core-taken true]
-    ask processes with[ who  = [who] of process item 1 mylist]  [face  unused-core forward 1] ;direi che qui devo prendere il primo elemento della lista e farlo spostare qui,una volta che inizia a spostarsi dev
-    
-  ]
+  generate-processes
   
+  
+  ;TO DO :  MOVE THE SPAWNED PROCESS TO THE (turtle)QUEUE IF POSSIBLE
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+; da modificare... prima l'elemento deve essere messo nella coda..
+   if any? cores with [core-taken = false] and number-of-processes > 0 [
+    ask processes with[ who  = first  mylist]  [
+        face unused-core
+        forward 0.0001
+        let target-distance  [distance process first mylist] of unused-core
+         if target-distance < 0.00005 [
+          ask unused-core [set core-taken  true]
+          move-to unused-core
+        ]
+      ]
+    ]  ; this action in the future will be done by the first project in the turtle queue
+    
+  
+
  tick
 end
+
+
+
+to generate-processes
+  
+    if ticks > 0 and  ticks mod 10 = 0 and number-of-processes < max-number-of-processes
+  [
+
+      create-processes 1[
+        set color green
+        set shape "square"
+        set size 2
+        set xcor 0
+        set ycor 0
+        set id current-process
+      ]
+      ;set whonumber  [who] of  process current-process  --> it'doesn't work.. same error below
+      ask process current-process [set whonumber  who ] ; --> current-proces is a variable that start to 0.. yeah i've tried also to put 0 instead.. doesn't work
+      set mylist lput whonumber mylist
+
+      set number-of-processes  number-of-processes + 1
+      set current-process  current-process + 1 ;verificare se quando muore un processo l'assegnazione sia sempre sequenziale oppure debba fare -1 in caso di die ... TO UPDATE: se creo nuovi core o nuove turtle che non siano processi
+      if [number-of-slots] of the-queue < [max-number-of-slots] of the-queue [
+          generate-slot
+          set current-process  current-process + 1 ; mi serve monitorare il numero degli id
+          set current-slot  current-process  ; l'id della nuova turtle sarà quella dell'ultimo processo genrato + 1... però incrementavo già prima
+          ask the-queue [ set number-of-slots number-of-slots + 1]
+      
+          ; now i need to move the process to the destination
+      ]
+  ]
+  
+end
+
+
+to generate-slot
+  
+  
+end
+
+
+
 
 to schedule
   ;(
@@ -142,21 +212,21 @@ to schedule
  ; cpu start--> serve un thread per la cpu
   ;while(cpu taken)
 
-     
+
      ;1)SE LA LISTA  HA MENO DI 8 ELEMENTI , GENERA UN NUOVO PROCESSO
      ;2)INSERISCI IN FONDO ALLA LIST AIL NUOVO PROCESSO
-     
-     
-     
-  
+
+
+
+
   ;ask mylist with[if(lenght < 8 ) [set lput spawn()]]
-  
-  
-  ;  )  
-  
+
+
+  ;  )
+
 end
 
 ; to be defined ;
 to spawn
-  
+
 end
